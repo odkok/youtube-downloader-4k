@@ -112,8 +112,10 @@ class App(tk.Frame):
         self.root.geometry('500x600')
         tk.Frame.__init__(self, self.root)
 
-        self.icon = ImageTk.PhotoImage(Image.open('assets/direct-download.png'))
-        self.root.iconphoto(True, self.icon)
+        self.icon_path = 'assets/direct-download.png'
+        if os.path.isfile(self.icon_path):
+            self.icon = ImageTk.PhotoImage(Image.open(self.icon_path))
+            self.root.iconphoto(True, self.icon)
 
         # input bar for getting video url
         self.input_bar = EntryWithPlaceholder(self.root, placeholder='enter video url', width=200, borderwidth=5)
