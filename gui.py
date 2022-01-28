@@ -3,7 +3,7 @@ from tkinter import messagebox
 from PIL import ImageTk, Image
 import os.path
 import threading
-from helper import YouTubeHelper, FfmpegNotAvailableError, FFMPEG_AVAILABLE
+from helper import YouTubeHelper, FFMPEG_AVAILABLE
 
 
 class DropDown(tk.OptionMenu):
