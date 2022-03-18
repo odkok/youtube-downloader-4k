@@ -91,7 +91,7 @@ quality = None
 
 if args.info:
     # print video info and leave
-    YouTubeHelper(args.url).get_info()
+    YouTubeHelper(args.url).dump_info()
     sys.exit()
 
 downloader = YouTubeHelper(args.url)
