@@ -1,6 +1,7 @@
-import sys
 import os
 import subprocess
+import urllib.parse
+import urllib.request
 
 try:
     from pytube import YouTube
@@ -21,6 +22,14 @@ else:
     FFMPEG_AVAILABLE = True
 
 
+class FfmpegNotAvailableError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+
 class YouTubeHelper:
     def __init__(self, video_link):
         """
@@ -30,6 +39,7 @@ class YouTubeHelper:
         :type video_link: str
         """
         self.yt = YouTube(video_link)
+        self.index = 0
         self.yt.check_availability()  # throw error if not available
 
     def auto_download(self, myfolder=None):
@@ -73,29 +83,30 @@ class YouTubeHelper:
         :type fps: int
         :return: None
         """
+        self.index += 1
         title = self.yt.title
+        idx = self.index
         valid_filename = safe_filename(title) + '.mp4'
         file_path = os.path.join(myfolder, valid_filename) if myfolder else valid_filename
         progressive_video = self.yt.streams.filter(progressive=True, resolution=resolution, fps=fps)
+
         # download progressive video if possible
         if progressive_video:
             print("[Downloading...]")
             progressive_video.last().download(output_path=myfolder, filename=title)
             return
         if not FFMPEG_AVAILABLE:
-            print(
-                '[ERROR: ffmpeg not found. Cannot perform downloading.'
-                'Make sure ffmpeg is installed and added in PATH]')
-            print('[PROGRAM TERMINATED]')
-            sys.exit()
+            raise FfmpegNotAvailableError('ffmpeg not found. Cannot perform downloading.'
+                                          'Make sure ffmpeg is installed and added in PATH')
+
         # search for video with specific resolution and fps
         video_search_result = self.yt.streams.filter(only_video=True, resolution=resolution, fps=fps)
         if video_search_result:
             print("[Downloading...]")
             video_path = video_search_result.last().download(
-                output_path=myfolder, filename='video')
+                output_path=myfolder, filename=f'video{idx}')
             audio_path = self.yt.streams.filter(only_audio=True).order_by('abr').last().download(output_path=myfolder,
-                                                                                                 filename='audio')
+                                                                                                 filename=f'audio{idx}')
             subprocess.run(
                 ['ffmpeg', '-i', video_path, '-i', audio_path, '-vcodec', 'copy', '-acodec', 'aac', file_path])
             os.remove(video_path)
@@ -137,14 +148,26 @@ class YouTubeHelper:
             path, ext = os.path.splitext(audio_path)
             if ext != audio_format:
                 if not FFMPEG_AVAILABLE:
-                    print(
-                        '[ERROR: ffmpeg not found. Cannot perform conversion.'
-                        'Make sure ffmpeg is installed and added in PATH]')
-                    print('[PROGRAM TERMINATED]')
-                    sys.exit()
+                    raise FfmpegNotAvailableError('ffmpeg not found. Cannot perform downloading.'
+                                                  'Make sure ffmpeg is installed and added in PATH')
                 output_path = os.path.join(myfolder, filename + audio_format) if myfolder else filename + audio_format
                 subprocess.run(['ffmpeg', '-i', audio_path, output_path])
                 os.remove(audio_path)
+
+    def get_thumbnail(self, myfolder=None):
+        """
+        download video thumbnail and return the path to downloaded thumbnail
+
+        :param myfolder: directory for downloading thumbnail
+        :type myfolder: str or path-like or None
+        :return: path to thumbnail
+        :rtype: str
+        """
+        src_link = self.yt.thumbnail_url
+        filename = os.path.basename(urllib.parse.urlparse(src_link).path)
+        full_path = os.path.normpath(os.path.join(myfolder, filename)) if myfolder is not None else filename
+        urllib.request.urlretrieve(src_link, full_path)
+        return full_path
 
     def get_all_resolution(self):
         """
@@ -179,7 +202,7 @@ class YouTubeHelper:
                 audios.append(bytes_per_second)
         return audios
 
-    def get_info(self):
+    def dump_info(self):
         """
         print video info: title, publish date, description, duration,
         available resolution and audio bit rate for download
@@ -193,6 +216,24 @@ class YouTubeHelper:
         print("length: ", readable_time(self.yt.length))
         print("available resolution for download: ", self.get_all_resolution())
         print("available audio quality for download: ", self.get_all_audio_quality())
+
+    def get_video_length(self):
+        """
+        video duration in human readable form
+
+        :return: video duration
+        :rtype str
+        """
+        return readable_time(self.yt.length)
+
+    def get_title(self):
+        """
+        get video title
+
+        :return: title
+        :rtype: str
+        """
+        return self.yt.title
 
 
 def readable_time(seconds):
