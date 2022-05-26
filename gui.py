@@ -6,6 +6,9 @@ import threading
 from helper import YouTubeHelper, FfmpegNotAvailableError, FFMPEG_AVAILABLE
 
 
+# TODO: use multiple threads to download things in background
+
+
 class DropDown(tk.OptionMenu):
     def __init__(self, parent, options: list, initial_value: str = None):
         """
@@ -91,8 +94,6 @@ class EntryWithPlaceholder(tk.Entry):
 # noinspection PyAttributeOutsideInit
 class App(tk.Frame):
     # TODO: add clear button of input bar (if possible)
-    # TODO: add options for choosing directory to download
-    # TODO: handle existed file
     def __init__(self):
         self.root = tk.Tk()
         self.root.title('YouTube Downloader')
@@ -102,9 +103,6 @@ class App(tk.Frame):
         self.bitrate_list = ['default']
         self.original_image = None  # original thumbnail image
         self.img = None  # image for tkinter
-
-        if not os.path.isdir('assets'):
-            os.mkdir('assets')
 
         self.root.geometry('500x600')
         tk.Frame.__init__(self, self.root)
@@ -162,29 +160,25 @@ class App(tk.Frame):
             self.downloadButton.config(state=tk.DISABLED)
         elif url != self.url:
             # update url and YouTube Helper
-            prev_url = self.url
             self.url = url
             try:
                 self.yt = YouTubeHelper(self.url)
+                self.res_list = ['default'] + self.yt.get_all_resolution()
+                self.bitrate_list = ['default'] + self.yt.get_all_audio_quality()
+                img_path = self.yt.get_thumbnail(myfolder='assets')
+                self.original_image = Image.open(img_path)
+                self.img = ImageTk.PhotoImage(self.original_image)
+                time_duration = self.yt.get_video_length()
+                title = self.yt.get_title()
+
+                # update options
+                if self.getDownloadMode() == 0:
+                    self.resolutionOptions.reset(self.res_list)
+                elif self.getDownloadMode() == 1:
+                    self.bitrateOptions.reset(self.bitrate_list)
             except Exception as e:
-                self.url = prev_url
                 messagebox.showerror(message=str(e))
                 return
-
-            # update options
-            self.res_list = ['default'] + self.yt.get_all_resolution()
-            self.bitrate_list = ['default'] + self.yt.get_all_audio_quality()
-            if self.getDownloadMode() == 0:
-                self.resolutionOptions.reset(self.res_list)
-            elif self.getDownloadMode() == 1:
-                self.bitrateOptions.reset(self.bitrate_list)
-
-            # get thumbnail, duration, title
-            img_path = self.yt.get_thumbnail(myfolder='assets')
-            self.original_image = Image.open(img_path)
-            self.img = ImageTk.PhotoImage(self.original_image)
-            time_duration = self.yt.get_video_length()
-            title = self.yt.get_title()
 
             # activate download button
             self.downloadButton.config(state=tk.ACTIVE)
@@ -210,6 +204,7 @@ class App(tk.Frame):
             self.img = ImageTk.PhotoImage(self.original_image)  # keep reference
             self.imageLabel.config(image=self.img)  # change the image in label
 
+    # TODO: solve the race condition problem
     def download(self):
         if not self.yt or not self.url:
             messagebox.showerror(message='cannot download')

@@ -108,7 +108,7 @@ class YouTubeHelper:
             audio_path = self.yt.streams.filter(only_audio=True).order_by('abr').last().download(output_path=myfolder,
                                                                                                  filename=f'audio{idx}')
             subprocess.run(
-                ['ffmpeg', '-i', video_path, '-i', audio_path, '-vcodec', 'copy', '-acodec', 'aac', file_path])
+                ['ffmpeg', '-i', video_path, '-i', audio_path, '-vcodec', 'copy', '-acodec', 'aac', '-preset', 'ultrafast', file_path])
             os.remove(video_path)
             os.remove(audio_path)
         else:
@@ -202,7 +202,7 @@ class YouTubeHelper:
                 audios.append(bytes_per_second)
         return audios
 
-    def dump_info(self):
+    def get_info(self):
         """
         print video info: title, publish date, description, duration,
         available resolution and audio bit rate for download
