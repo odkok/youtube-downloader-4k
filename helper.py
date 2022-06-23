@@ -88,8 +88,8 @@ class YouTubeHelper:
 
         # download progressive video if possible
         if progressive_video:
-            print("[Downloading...]")
-            progressive_video.last().download(output_path=myfolder, filename=title)
+            print("[Downloading progressive video...]")
+            progressive_video.last().download(output_path=myfolder, filename=valid_filename)
             return
         if not FFMPEG_AVAILABLE:
             raise FfmpegNotAvailableError('ffmpeg not found. Cannot perform downloading.'
